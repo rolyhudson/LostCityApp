@@ -1,15 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.IO;
-using System.Linq;
 using System.Text;
-using Accord.Statistics.Analysis;
-using Accord.Statistics.Models.Regression;
-using Accord.Statistics.Visualizations;
 using Accord.Collections;
 using System.Device.Location;
-using System.Reflection;
 
 namespace LostCityApp
 {
@@ -28,10 +22,11 @@ namespace LostCityApp
         List<List<int[]>> indicesForAnalysis;
         bool getTerrain = true;
         bool getInterVis = true;
-        int nConfigs = 1000;
-        string resultsFolder = @"C:\Users\Admin\Documents\projects\LostCity\results\";
-        string demFolder = @"C:\Users\Admin\Documents\projects\LostCity\C18\C18\";
-        string geoRefObjectsFolder = @"C:\Users\Admin\Documents\projects\LostCity\georefObjects";
+
+        int nConfigs = 1000; 
+        string resultsFolder = @"C:\Users\Admin\Documents\projects\LostCity\results\";//output anywhere
+        string demFolder = @"C:\Users\Admin\Documents\projects\LostCity\app\LostCityApp\Data\hgt";//input from Data\hgt
+        string geoRefObjectsFolder = @"C:\Users\Admin\Documents\projects\LostCity\app\LostCityApp\Data\georefObjects";// input from Data\georefObjects
         public LostCityObjects()
         {
             
