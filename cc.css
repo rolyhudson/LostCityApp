@@ -1,0 +1,98 @@
+body { font-family:"Droid Sans Mono",Helvetica, Arial, sans-serif;}
+h1,h2,h3,h4,h5{margin: 0px 2px 0px 2px;color: black;}
+h2{font-family: 'EB Garamond',Georgia,Times, serif;}
+p{margin: 3px;color: black;}
+
+a:link {color: #000066; text-decoration: none;font-weight: bold;}
+a:hover {
+    color: hotpink; text-decoration: none;;
+}
+
+img{
+	width: 70%;
+	position: absolute;
+	margin: auto;
+    top: 0;
+}
+#header{
+position: fixed;
+	top: 0;
+	width: 50%;
+	
+	z-index: 4;
+	
+}
+.floatText{
+	position: absolute;
+	bottom: 0;
+
+}
+.menuText{
+	position: absolute;
+	
+}
+.menuTextCentre{
+
+}
+.menuTextCentre > h4{
+	text-align: center;
+}
+.menuTextRight{
+	
+}
+.menuTextRight > h4{
+	text-align: right;
+}
+#container{
+	margin: auto;
+	width: 50%;
+
+}
+/*  SECTIONS  */
+.section {
+	clear: both;
+	padding: 0px;
+	margin: 0px;
+	overflow-y: auto;
+}
+#refs p{
+	font-size: smaller;
+	
+}
+/*  COLUMN SETUP  */
+.col {
+	display: block;
+	float:left;
+	margin: 1% 0 1% 1%;
+	overflow-y: auto;
+}
+.col:first-child { margin-left: 0; }
+
+/*  GROUPING  */
+.group:before,
+.group:after { content:""; display:table; }
+.group:after { clear:both;}
+.group { zoom:1; /* For IE 6/7 */ }
+/*  GRID OF THREE  */
+.span_3_of_3 { width: 100%; position: relative;}
+.span_2_of_3 { width: 66.33%; }
+.span_1_of_3 { width: 32.33%; position: relative;}
+.span_1_of_3_logo {width: 32.33%; position: relative;}
+
+/*  GO FULL WIDTH BELOW XX0 PIXELS */
+@media only screen and (max-width: 750px) {
+	.col {  margin: 1% 0 1% 0%; }
+	.span_3_of_3, .span_2_of_3, .span_1_of_3 { width: 100%; }
+	.span_1_of_3_logo {width: 32.33%; position: relative;}
+	#container, #networkform, #networkformthanks{width: 100%;}
+	.menuTextCentre, .menuTextRight{position: absolute;}
+	.menuTextRight > h4{
+		text-align: left;
+	}
+	.menuTextCentre > h4{
+		text-align: left;
+	}
+
+}
+
+
