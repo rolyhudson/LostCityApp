@@ -4,6 +4,7 @@ using System.IO;
 using System.Text;
 using Accord.Collections;
 using System.Device.Location;
+using System.Threading.Tasks;
 
 namespace LostCityApp
 {
@@ -18,32 +19,49 @@ namespace LostCityApp
         List<RefPlaneVis> interVisResults = new List<RefPlaneVis>();
         List<RefPlaneVis> terrainVisResults = new List<RefPlaneVis>();
         DEM dem;
-        RefPlaneVis rpv;
+        
         List<List<int[]>> indicesForAnalysis;
         bool getTerrain = true;
         bool getInterVis = true;
 
-        int nConfigs = 1000; 
-        string resultsFolder = @"C:\Users\Admin\Documents\projects\LostCity\results\";//output anywhere
-        string demFolder = @"C:\Users\Admin\Documents\projects\LostCity\app\LostCityApp\Data\hgt";//input from Data\hgt
-        string geoRefObjectsFolder = @"C:\Users\Admin\Documents\projects\LostCity\app\LostCityApp\Data\georefObjects";// input from Data\georefObjects
+        int nRandomConfigs = 100;
+        string dataFolder = @"C:\Users\Admin\Documents\projects\LostCity\app\LostCityApp\Data";
         public LostCityObjects()
         {
-            
-            dem = new DEM(demFolder, 11.140131, 10.975654, -74.000914, -73.836385);
-            readObjects();
-
+            Console.WriteLine("Loading DEM");
+            dem = new DEM(dataFolder, 11.140131, 10.975654, -74.000914, -73.836385);
+            if (!dem.success)
+            {
+                Console.WriteLine("Failed to load DEM. Check data folder path is correctly defined");
+                return;
+            }
+            Console.WriteLine("Loading reference objects");
+            if (!readObjects())
+            {
+                Console.WriteLine("Failed to load GeoReferenceObjects.");
+                return;
+            }
             analyseVisibility();
             totalScore();
+
         }
         
-        private void readObjects()
+        private bool readObjects()
         {
-            rios = MapTools.readPolylines(geoRefObjectsFolder+"\\rios.csv", false);
+            try
+            {
+                rios = MapTools.readPolylines(dataFolder + "\\geoRefObjects\\rios.csv", false);
+
+                rioTree = setKDTreeFromPolylines(rios);
+                caminos = MapTools.readPolylines(dataFolder + "\\geoRefObjects\\caminos.csv", false);
+                getSitioData();
+                return true;
+            }
             
-            rioTree = setKDTreeFromPolylines(rios);
-            caminos = MapTools.readPolylines(geoRefObjectsFolder + "\\caminos.csv", false);
-            getSitioData();
+            catch
+            {
+                return false;
+            }
         }
         
         private void analyseDistToWater()
@@ -52,7 +70,7 @@ namespace LostCityApp
             List<double[]> means = new List<double[]>();
             List<double[]> medians = new List<double[]>();
             List < Accord.DoubleRange> ranges = new List<Accord.DoubleRange>();
-            StreamWriter sw = new StreamWriter(resultsFolder+"actualWater_SlopeAnalysis.csv",false, Encoding.UTF8);
+            StreamWriter sw = new StreamWriter(dataFolder + "\\results\\actualWater_SlopeAnalysis.csv", false, Encoding.UTF8);
             sw.WriteLine("site,waterDist,slope");
             foreach (Sitio s in this.sitios)
             {
@@ -88,7 +106,7 @@ namespace LostCityApp
             sw.Close();
         }
         
-        private void siteScores()
+        private void siteScores(RefPlaneVis rpv)
         {
             
             foreach (Sitio s in this.sitios)
@@ -111,7 +129,7 @@ namespace LostCityApp
         }
         private void printSiteScores()
         {
-            StreamWriter sw = new StreamWriter(this.resultsFolder + "siteScores.csv", false, Encoding.UTF8);
+            StreamWriter sw = new StreamWriter(dataFolder + "\\results\\siteScores.csv", false, Encoding.UTF8);
             sw.WriteLine("name,pts,terrain,intervisibility,area1,population,area2");
             foreach (Sitio s in this.sitios)
             {
@@ -125,51 +143,56 @@ namespace LostCityApp
         }
         private void analyseVisibility()
         {
+            Console.WriteLine("Starting analysis of existing sites");
             getIndices();
             analyseDistToWater();
-            printwantedIndices(this.resultsFolder + "settlement0.csv");
+            printwantedIndices(dataFolder + "\\results\\settlement0.csv");
             if (this.getTerrain)
             {
-                rpv = new RefPlaneVis(dem, 90, "actual sites terrain", 0);
+                RefPlaneVis rpv = new RefPlaneVis(dem, 90, "actual sites terrain", 0, dataFolder);
                 rpv.terrainVisibility(indicesForAnalysis);
-                siteScores();
+                siteScores(rpv);
                 rpv.writeVis("terrainVis" + 0);
                 terrainVisResults.Add(rpv);
             }
             if (this.getInterVis)
             {
-                rpv = new RefPlaneVis(dem, 90, "actual sites intervisibility", 0);
+                RefPlaneVis rpv = new RefPlaneVis(dem, 90, "actual sites intervisibility", 0, dataFolder);
                 rpv.interVisibility(sitios);
-                siteScores();
+                siteScores(rpv);
                 rpv.writeVis("interVisTest" + 0);
                 interVisResults.Add(rpv);
             }
             printSiteScores();
+            Console.WriteLine("Starting analysis of randomly generated sites");
             generateTestRanSites();
         }
         
         private void generateTestRanSites()
         {
-            for (int r = 0; r < this.nConfigs; r++)
+            Parallel.For(0, this.nRandomConfigs, r =>
             {
-                RandomSettlement rs = new RandomSettlement(sitios, dem.demPts, this.rioTree, dem.slope, true,true);
-                printRandomSettlement(rs, this.resultsFolder + "settlement" + (r + 1) + ".csv");
+                Console.WriteLine("Starting analysis of random site " + r);
+                RandomSettlement rs = new RandomSettlement(sitios, dem.demPts, this.rioTree, dem.slope, true, true, dataFolder);
+                printRandomSettlement(rs, dataFolder + "\\results\\settlement" + (r + 1) + ".csv");
                 if (getTerrain)
                 {
-                    rpv = new RefPlaneVis(dem, 90, "random sites terrain " + (r + 1), (r + 1));
+                    Console.WriteLine("Starting terrain analysis of random site " + r);
+                    RefPlaneVis rpv = new RefPlaneVis(dem, 90, "random sites terrain " + (r + 1), (r + 1), dataFolder);
                     rpv.terrainVisibility(rs.indicesForAnalysis);
                     rpv.writeVis("terrainVis" + (r + 1));
                     terrainVisResults.Add(rpv);
                 }
                 if (getInterVis)
                 {
-                    rpv = new RefPlaneVis(dem, 90, "random sites intervisibility " + (r + 1), (r + 1));
+                    Console.WriteLine("Starting intervisibility analysis of random site " + r);
+                    RefPlaneVis rpv = new RefPlaneVis(dem, 90, "random sites intervisibility " + (r + 1), (r + 1), dataFolder);
                     rpv.interVisibility(rs.sitiosRandom);
                     rpv.writeVis("interVisTest" + (r + 1));
                     interVisResults.Add(rpv);
                 }
-                
-            }
+
+            });
         }
         private void totalScore()
         {
@@ -186,7 +209,7 @@ namespace LostCityApp
                 }
                 terrainVisTotalScores.Add(score);
             }
-            printScores(terrainVisTotalScores, this.resultsFolder + "terrainVisScores.csv");
+            printScores(terrainVisTotalScores, dataFolder + "\\results\\terrainVisScores.csv");
             List<int> interVisTotalScores = new List<int>();
             foreach (RefPlaneVis rpv in interVisResults)
             {
@@ -201,7 +224,7 @@ namespace LostCityApp
                 interVisTotalScores.Add(score);
                 
             }
-            printScores(interVisTotalScores, this.resultsFolder + "interVisScores.csv");
+            printScores(interVisTotalScores, dataFolder + "\\results\\interVisScores.csv");
         }
         private void printScores(List<int> visTotalScores,string path)
         {
@@ -265,8 +288,8 @@ namespace LostCityApp
         }
         private void getSitioData()
         {
-            boundaries = MapTools.readPolylines(geoRefObjectsFolder + "\\sitios.csv", true);
-            StreamReader sr = new StreamReader(geoRefObjectsFolder + "\\sitioData.csv");
+            boundaries = MapTools.readPolylines(dataFolder + "\\georefObjects\\sitios.csv", true);
+            StreamReader sr = new StreamReader(dataFolder + "\\georefObjects\\sitioData.csv");
             string line = sr.ReadLine();
             int rank = 1;
             while(line!= null)

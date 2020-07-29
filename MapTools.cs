@@ -2,6 +2,7 @@
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -159,6 +160,61 @@ namespace LostCityApp
                 sw.WriteLine(sb.ToString());
             }
             sw.Close();
+        }
+        public static void makeSiteMaps(List<string> filenames, string dataFolder)
+        {
+            int widthPerChart = 250;
+            int heightPerChart = 250;
+            int cols = 5;//(int)(Math.Sqrt(filenames.Count));
+            int rows = 3;// cols+1;
+            int width = cols * widthPerChart;
+            int height = rows * heightPerChart;
+            Bitmap bitmap = new Bitmap(width, height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            Graphics g = Graphics.FromImage(bitmap);
+            // white back ground
+            g.Clear(Color.White);
+            int colNum = 0;
+            int rowNum = 0;
+            for (int v = 0; v < 15; v++)
+            {
+                int startX = colNum * widthPerChart + 25;
+                int startY = (rowNum + 1) * heightPerChart - 25;
+                Font tFont = new Font("Arial", 12);
+                SolidBrush sBrush = new SolidBrush(System.Drawing.Color.Black);
+                //image title
+                //if (v == 0) //g.DrawString(filename.Substring(filename.LastIndexOf("\\")), tFont, sBrush, startX, startY + 25);
+                //graph title
+
+                string sname = "original";
+                if (v > 0) sname = "randomSites_" + v;
+                g.DrawString(sname, tFont, sBrush, startX, startY - 200);
+                Color c = new Color();
+                if (v == 0) c = Color.Blue;
+                else c = Color.Red;
+                StreamReader sr = new StreamReader(filenames[v]);
+                string line = sr.ReadLine();
+                while (line != null)
+                {
+                    string[] coords = line.Split(',');
+                    for (int i = 0; i < coords.Length; i += 2)
+                    {
+                        bitmap.SetPixel(Convert.ToInt32(coords[i + 1]) + startX, startY - (200 - Convert.ToInt32(coords[i])), c);
+                    }
+                    line = sr.ReadLine();
+                }
+                sr.Close();
+                Pen p = new Pen(Color.Black);
+                g.DrawRectangle(p, startX, startY - 200, 200, 200);
+
+                colNum++;
+                if (colNum == cols)
+                {
+                    colNum = 0;
+                    rowNum++;
+                }
+            }
+            //String fname = filename.Substring(0, filename.LastIndexOf("."));
+            bitmap.Save(dataFolder + "\\results\\siteMaps.jpg", System.Drawing.Imaging.ImageFormat.Jpeg);
         }
     }
     public class Sitio

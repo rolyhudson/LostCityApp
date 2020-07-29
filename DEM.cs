@@ -26,10 +26,11 @@ namespace LostCityApp
         double startW=0;
         double startN=0;
         StreamWriter sw;
+        public bool success = false;
         public DEM(string ifolder, double n, double s, double w, double e)
         {
             sw = new StreamWriter("hgtfiles.csv");
-            folder = ifolder;
+            folder = ifolder+"\\dem\\";
             north = n;
             south = s;
             west = w;
@@ -73,8 +74,9 @@ namespace LostCityApp
                     {
                         cellW = Math.Round(cellW);
                     }
-                    
-                    openFile(cellN, cellW);
+                    success = openFile(cellN, cellW);
+                    if (!success)
+                        return;
                     secondsN = truncateInSeconds(cellN);
                     secondsW = truncateInSeconds(cellW);
                     //check we have the right file
@@ -196,17 +198,26 @@ namespace LostCityApp
             }
             sw.Close();
         }
-        private void openFile(double n, double w)
+        private bool openFile(double n, double w)
         {
             string file = getFileFromCoord(n, w);
             if (currentHGT != file)
             {
                 sw.WriteLine(currentHGT);
                 if (b != null) b.Close();
-                b = new BinaryReader(new FileStream(folder + file, FileMode.Open, FileAccess.Read), new ASCIIEncoding());
+                try
+                {
+                    b = new BinaryReader(new FileStream(folder + file, FileMode.Open, FileAccess.Read), new ASCIIEncoding());
+                }
+                catch(Exception e)
+                {
+                    Console.WriteLine(e.Message);
+                    return false;
+                }
                 currentHGT = file;
+                
             }
-
+            return true;
         }
         private int convertToSeconds(double deg)
         {

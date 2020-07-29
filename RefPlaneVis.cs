@@ -20,14 +20,16 @@ namespace LostCityApp
         List<List<bool>> wanted = new List<List<bool>>();
         DEM dem;
         double cell;
+        string dataFolder;
        
-        public RefPlaneVis(DEM eledata, double cellSize, string groupname, int groupNumber)
+        public RefPlaneVis(DEM eledata, double cellSize, string groupname, int groupNumber, string data)
         {
             dem = eledata;
             hts = eledata.hts;
             name = groupname;
             groupNum = groupNumber;
             cell = cellSize;
+            dataFolder = data;
             setScores();
             
         }
@@ -256,7 +258,8 @@ namespace LostCityApp
         }
         public void writeVis(string filename)
         {
-            StreamWriter sw = new StreamWriter(@"C: \Users\Admin\Documents\projects\LostCity\results\" + filename + ".csv");
+            Console.WriteLine("Writing results file "+ filename);
+            StreamWriter sw = new StreamWriter(dataFolder +"\\results\\" + filename + ".csv");
             for (int i = 0; i < visScore.Count; i++)
             {
                 for (int j = 0; j < visScore[i].Count; j++)
@@ -430,7 +433,6 @@ namespace LostCityApp
         private void checkSector(List<int[]> indices,int snum)
         {
             StreamWriter sw = new StreamWriter("sectorCheck_"+snum+".csv");
-            int v = 0;
             for (int i = 0; i < indices.Count; i++)
             {
                 sw.WriteLine(indices[i][0].ToString() + "," + indices[i][1].ToString());
