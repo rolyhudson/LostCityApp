@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
     <head>
-        <title>three.js webgl - geometry - terrain</title>
+        <title>lost city - terrain</title>
         <meta charset="utf-8">
         <script src="https://d3js.org/d3.v4.js"></script>
         <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
@@ -19,7 +19,7 @@
     <body>
 
         <div id="container"></div>
-        <div id="info"><a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> - webgl terrain raycasting demo</div>
+        <div id="info"><a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> - webgl terrain</div>
 
         <script type="module">
 
@@ -38,11 +38,6 @@
 
             var worldWidth = 197, worldDepth = 197,
                 worldHalfWidth = worldWidth / 2, worldHalfDepth = worldDepth / 2;
-
-            var helper;
-
-            var raycaster = new THREE.Raycaster();
-            var mouse = new THREE.Vector2();
 
             var dem =[];
 
@@ -110,10 +105,6 @@
                 var geometry = new THREE.ConeBufferGeometry( 20, 100, 3 );
                 geometry.translate( 0, 50, 0 );
                 geometry.rotateX( Math.PI / 2 );
-                helper = new THREE.Mesh( geometry, new THREE.MeshNormalMaterial() );
-                scene.add( helper );
-
-                container.addEventListener( 'mousemove', onMouseMove, false );
 
                 stats = new Stats();
                 container.appendChild( stats.dom );
@@ -266,26 +257,7 @@
 
             }
 
-            function onMouseMove( event ) {
-
-                mouse.x = ( event.clientX / renderer.domElement.clientWidth ) * 2 - 1;
-                mouse.y = - ( event.clientY / renderer.domElement.clientHeight ) * 2 + 1;
-                raycaster.setFromCamera( mouse, camera );
-
-                // See if the ray from the camera into the world hits one of our meshes
-                var intersects = raycaster.intersectObject( mesh );
-
-                // Toggle rotation bool for meshes that we clicked
-                if ( intersects.length > 0 ) {
-
-                    helper.position.set( 0, 0, 0 );
-                    helper.lookAt( intersects[ 0 ].face.normal );
-
-                    helper.position.copy( intersects[ 0 ].point );
-
-                }
-
-            }
+        
 
         </script>
 
