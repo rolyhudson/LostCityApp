@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+
+body {
+  font: 10px sans-serif;
+}
+
+.axis path,
+.axis line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+.label{
+  
+  fill: #000;
+}
+.dot {
+  stroke: #000;
+}
+
+</style>
+<body>
+<script src="https://d3js.org/d3.v4.min.js"></script>
+<script src="simple_statistics.js"></script>
+<script src="https://d3js.org/d3-interpolate.v1.min.js"></script>
+<script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
+<script>
+//https://bl.ocks.org/sebg/6f7f1dd55e0c52ce5ee0dac2b2769f4b
+var margin = {top: 300, right: 20, bottom: 100, left: 100},
+    width = 1000 - margin.left - margin.right,
+    height = 800 - margin.top - margin.bottom;
+
+c ="["
+inc = 0.7/10
+for(var i=0;i<=10;i++){
+  var col = d3.interpolateYlGnBu(i*inc);
+  var s = col.indexOf("(");
+  var e = col.indexOf(")");
+  var rgb = "["+col.substring(s+1,e)+"],";
+c+=rgb;
+}
+
+
+var x = d3.scaleLog()
+    .range([0, width]);
+
+var y = d3.scaleLinear()
+    .range([height, 0]);
+
+var color = d3.scaleOrdinal(d3.schemeCategory10);
+
+var xAxis = d3.axisBottom(x).ticks(10, d3.format(",.1s"));
+
+var yAxis = d3.axisLeft(y).ticks(5, d3.format(",.1s"));
+
+var svg = d3.select("body").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+d3.csv("siteScores.csv", function(error, data) {
+  if (error) throw error;
+for (d in data){
+
+  data[d].terrain =+data[d].terrain/+data[d].pts;
+  data[d].intervisibility = +data[d].intervisibility/+data[d].pts;
+  data
+}
+x.domain([120,3.6e3]);
+y.domain(d3.extent(data, function(d) { return d.intervisibility; })).nice();
+
+var max = d3.max(data,function(g) { return x(g.terrain);})
+var terrainData = data.map(function(d){return x(d.terrain)/max});
+var clusterBnds = ss.jenks(terrainData,9);
+
+for (var i=0;i<data.length;i++){
+  var tnorm= x(data[i].terrain)/max;
+  for(var j=0;j<clusterBnds.length-1;j++){
+    if(tnorm>=clusterBnds[j]&&tnorm<=clusterBnds[j+1]){
+      
+      data[i].cluster = j;
+       break;
+    }
+  }
+}
+var groups=[];
+for(var j=0;j<clusterBnds.length-1;j++){
+  groups.push(data.filter(function(g){return g.cluster==j;}).sort(function(a,b) { return +a.terrain - +b.terrain }));
+  }
+var prevMaxX=0;
+var ylevel=2000
+var swerve = 120;
+for (var g=0;g<groups.length;g++){
+  var minx = d3.min(groups[g],function(d) { return x(d.terrain);})
+  var miny = d3.min(groups[g],function(d) { return y(d.intervisibility);})-swerve
+if(minx<prevMaxX&&g>0) minx=prevMaxX;
+if(miny<ylevel) ylevel = miny;
+  groups[g].forEach(function(d,i){d.xpos = minx+(20*i); d.ypos = miny;})
+  prevMaxX = minx+(20*groups[g].length);
+}
+
+
+  svg.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + height + ")")
+      .call(xAxis)
+    .append("text")
+      .attr("class", "label")
+      .attr("x", width)
+      .attr("y", 50)
+      .style("text-anchor", "end")
+      .text("normalised terrain visibility score");
+
+  svg.append("g")
+      .attr("class", "y axis")
+      .call(yAxis)
+    .append("text")
+      .attr("class", "label")
+      .attr("transform", "rotate(-90)")
+      .attr("y", -75)
+      .attr("dy", ".71em")
+      .style("text-anchor", "end")
+      .text("normalised inter-visibility score")
+
+
+  svg.selectAll(".dot")
+      .data(data)
+    .enter().append("circle")
+      .attr("class", "dot")
+      .attr("r", function(d){return +d.area2/30000;})
+      .attr("cx", function(d) { return x(d.terrain); })
+      .attr("cy", function(d) { return y(d.intervisibility); })
+      .style("fill", function(d) { return color(d.cluster); });
+  svg.selectAll(".line")
+.data(data)
+    .enter()
+    .append("polyline")
+    .attr("stroke", "#cccccc")
+    .style("stroke-width",  0.5)
+    .style("fill", "none")
+    .attr("points", function(d){return polylinePts(d,groups[d.cluster],ylevel,swerve);})
+
+    svg.selectAll(".text")
+      .data(data)
+    .enter().append("text")
+      .attr('transform', function(d,i){ return labelTransform(d,groups[d.cluster],ylevel);})
+      .attr("x", 0)//function(d) { return x(d.terrain); })
+      .attr("y", 0)//function(d) { return y(d.intervisibility); })
+      .attr("dy", ".35em")
+      .style("fill", function(d) { return color(d.cluster); })
+      .style("text-anchor", "end")
+      .text(function(d) { if(d.name.includes("200"))return "Ciudad Perdida"; else return d.name; });
+svg.selectAll("text")
+.attr("font-size", "16px")
+});
+var labelX=[];
+function lineXpos(d,group){
+  var b = group.filter(function(g){return g.name==d.name});
+  return b[0].xpos;
+}
+function polylinePts(d,group,ylevel,swerve){
+  var b = group.filter(function(g){return g.name==d.name});
+  var startX = b[0].xpos;
+  var startY = ylevel;
+  var endX = x(d.terrain);
+  var endY = y(d.intervisibility);
+  var points ="";
+  points+=startX+","+startY+",";
+  
+  points+=(startX)+","+(startY+swerve/2)+",";
+  points+=(endX)+","+(startY+swerve)+",";
+  points+=(endX)+","+(endY);
+  return points;
+}
+function labelTransform(d,group,ylevel){
+  var b = group.filter(function(g){return g.name==d.name});
+return 'translate( '+b[0].xpos+' , '+ylevel+'),'+ 'rotate(90)'
+}
+</script>
