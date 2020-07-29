@@ -27,16 +27,21 @@ var svg = d3.select("#my_dataviz")
 // Read the data and compute summary statistics for each specie
 d3.csv("actualWater_SlopeAnalysis.csv", function(data) {
 
+const queryString = window.location.search;
+let geoProp = 'slope';
+if(queryString.includes('water'))
+  geoProp = 'waterDist';
   // Compute quartiles, median, inter quantile range min and max --> these info are then used to draw the box.
   var sumstat = d3.nest() // nest function allows to group the calculation per level of a factor
     .key(function(d) { return d.site;})
     .rollup(function(d) {
-      q1 = d3.quantile(d.map(function(g) { return parseFloat(g.waterDist);}).sort(d3.ascending),.25)
-      median = d3.quantile(d.map(function(g) { return parseFloat(g.waterDist);}).sort(d3.ascending),.5)
-      q3 = d3.quantile(d.map(function(g) { return parseFloat(g.waterDist);}).sort(d3.ascending),.75)
+
+      q1 = d3.quantile(d.map(function(g) { return parseFloat(g[geoProp]);}).sort(d3.ascending),.25)
+      median = d3.quantile(d.map(function(g) { return parseFloat(g[geoProp]);}).sort(d3.ascending),.5)
+      q3 = d3.quantile(d.map(function(g) { return parseFloat(g[geoProp]);}).sort(d3.ascending),.75)
       interQuantileRange = q3 - q1
-      min = d3.min(d.map(function(g) { return parseFloat(g.waterDist);}))
-      max = d3.max(d.map(function(g) { return parseFloat(g.waterDist);}))
+      min = d3.min(d.map(function(g) { return parseFloat(g[geoProp]);}))
+      max = d3.max(d.map(function(g) { return parseFloat(g[geoProp]);}))
       return({q1: q1, median: median, q3: q3, interQuantileRange: interQuantileRange, min: min, max: max})
     })
     .entries(data)
@@ -133,7 +138,7 @@ svg
   .enter()
   .append("circle")
     .attr("cx", function(d){return(x(d.site) - jitterWidth/2 + Math.random()*jitterWidth )})
-    .attr("cy", function(d){return(y(d.waterDist))})
+    .attr("cy", function(d){return(y(d[geoProp]))})
     .attr("r", 1)
     .style("fill", "black")
     .attr("stroke", "black")
