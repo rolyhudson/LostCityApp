@@ -35,6 +35,7 @@ namespace LostCityApp
                 Console.WriteLine("Failed to load DEM. Check data folder path is correctly defined");
                 return;
             }
+            Image image = new Image(dem, 2000,2000);
             Console.WriteLine("Loading reference objects");
             if (!readObjects())
             {

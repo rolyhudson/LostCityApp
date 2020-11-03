@@ -71,6 +71,7 @@
     <Compile Include="DEM.cs" />
     <Compile Include="GeoJSONFeature.cs" />
     <Compile Include="GeoJSONGeometry.cs" />
+    <Compile Include="Image.cs" />
     <Compile Include="LostCityObjects.cs" />
     <Compile Include="MapTools.cs" />
     <Compile Include="Program.cs" />

@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace LostCityApp
 {
-    class DEM
+    public class DEM
     {
         string folder;
         string currentHGT = "";
@@ -192,7 +192,7 @@ namespace LostCityApp
                 for (int j = 0; j < hts[i].Count; j++)
                 {
                     sw.WriteLine(ptsLonLat[i][j][1]+","+ ptsLonLat[i][j][0] + "," + hts[i][j]/100);
-                    ptRow.Add(new Point3d(ptsLonLat[i][j][1], ptsLonLat[i][j][0], hts[i][j]));
+                    ptRow.Add(new Point3d(ptsLonLat[i][j][0], ptsLonLat[i][j][1], hts[i][j]));
                 }
                 demPts.Add(ptRow);
             }
