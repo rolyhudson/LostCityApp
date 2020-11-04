@@ -5,6 +5,7 @@ using System.Text;
 using Accord.Collections;
 using System.Device.Location;
 using System.Threading.Tasks;
+using System.Drawing;
 
 namespace LostCityApp
 {
@@ -35,17 +36,23 @@ namespace LostCityApp
                 Console.WriteLine("Failed to load DEM. Check data folder path is correctly defined");
                 return;
             }
-            Image image = new Image(dem, 2000,2000);
+            
             Console.WriteLine("Loading reference objects");
             if (!readObjects())
             {
                 Console.WriteLine("Failed to load GeoReferenceObjects.");
                 return;
             }
+            Image image = new Image(dem, 1000, 1000);
+            image.AddPolyine(@"C:\Users\Admin\Documents\projects\LostCity\hillshade1.png", @"C:\Users\Admin\Documents\projects\LostCity\hillshade1Rios.png", rios, Color.FromArgb(13, 19, 13));
+            image.AddFilledPolyline(@"C:\Users\Admin\Documents\projects\LostCity\hillshade1Rios.png", @"C:\Users\Admin\Documents\projects\LostCity\hillshade1RiosSitios.png", boundaries, Color.FromArgb(120,245, 35, 188));
+            image.AddPolylineName(@"C:\Users\Admin\Documents\projects\LostCity\hillshade1RiosSitios.png", @"C:\Users\Admin\Documents\projects\LostCity\hillshade1RiosSitiosText.png", boundaries);
             analyseVisibility();
             totalScore();
 
         }
+
+        
         
         private bool readObjects()
         {

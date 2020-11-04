@@ -5,6 +5,8 @@ using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using BH.oM.Graphics;
+using BH.Engine.Graphics;
 
 namespace LostCityApp
 {
@@ -16,6 +18,9 @@ namespace LostCityApp
         double north;
         double south;
         double demY;
+        double minZ;
+        double maxZ;
+        double rangeZ;
         DEM dem;
 
         double xCell;
@@ -23,6 +28,8 @@ namespace LostCityApp
         int pixelsX;
         int pixelsY;
         List<List<double>> zgrid = new List<List<double>>();
+
+        Gradient HypsometricGradient = new Gradient();
         public Image(DEM dem, int pixelsX, int pixelsY )
         {
             this.dem = dem;
@@ -39,66 +46,50 @@ namespace LostCityApp
              xCell = demX / pixelsX;
              yCell = demY / pixelsY;
             GetZGrid();
+            SetColourGradient();
             GenImage();
+        }
+        private void SetColourGradient()
+        {
+            List<Color> colors = new List<Color>();
+            colors.Add(Color.FromArgb(0, 64, 0));
+            colors.Add(Color.FromArgb(103, 145, 103));
+            colors.Add(Color.FromArgb(129, 178, 121));
+            colors.Add(Color.FromArgb(191, 223, 168));
+            colors.Add(Color.FromArgb(208, 184, 170));
+            List<decimal> decimals = new List<decimal>() { 0, (decimal)0.25, (decimal)0.5 , (decimal)0.75, 1};
+            HypsometricGradient = BH.Engine.Graphics.Create.Gradient(colors, decimals);
         }
         private void GenImage()
         {
+            DEMSlope slope = new DEMSlope();
             Bitmap image = new Bitmap(pixelsX, pixelsY);
             for (int y = 1; y < zgrid.Count()-1; y++)
             {
                 for (int x = 1; x < zgrid[y].Count()-1; x++)
                 {
-                   double topValue = zgrid[y-1][x];
-                   double leftValue = zgrid[y][x-1];
-                   double rightValue = zgrid[y][x+1];
-                   double bottomValue = zgrid[y + 1][x]; ;
 
-                   double slx = (rightValue - leftValue) / 3;
-                   double sly  = (bottomValue - topValue) / 3;
-                   double sl0 = Math.Sqrt(slx * slx + sly * sly);
+                    slope.VonNeumannNeighbourhood(zgrid[y - 1][x], zgrid[y][x + 1], zgrid[y + 1][x], zgrid[y][x - 1]);
+                    slope.Reflectance();
 
-                   double phi = Math.Acos(slx / sl0);
-                    if (sl0 == 0)
-                    { // account for division by zero trouble
-                        phi = 0;
-                    }
-                    double azimuth = 0;
-                    if (slx > 0)
-                    {
-                        if (sly > 0) azimuth = phi + 1.5 * Math.PI;
-                        else if (sly < 0) azimuth = 1.5 * Math.PI - phi;
-                        else phi = 1.5 * Math.PI;
-                    }
-                    else if (slx < 0)
-                    {
-                        if (sly < 0) azimuth = phi + .5 * Math.PI;
-                        else if (sly > 0) azimuth = .5 * Math.PI - phi;
-                        else azimuth = .5 * Math.PI;
-                    }
-                    else
-                    {
-                        if (sly < 0) azimuth = Math.PI;
-                        else if (sly > 0) azimuth = 0;
-                    }
-
-                   double sunElev = Math.PI * .25;
-                   double sunAzimuth = 1.75 * Math.PI;
-
-                   double L  = Math.Cos(azimuth - sunAzimuth) * Math.Cos(Math.PI * .5 - Math.Atan(sl0)) * Math.Cos(sunElev) + Math.Sin(Math.PI * .5 - Math.Atan(sl0)) * Math.Sin(sunElev);
-                    int grayValue =(int)(255 * L);
-
+                    double L = slope.slopeReflectance;
+                    int grayValue = (int)(255 * L);
                     if (grayValue < 0)
                     {
                         grayValue = 0;
                     }
-                    image.SetPixel(x, y, Color.FromArgb(grayValue, grayValue, grayValue));
+                    Color color = HypsometricGradient.Color((zgrid[y][x] - minZ) / rangeZ);
+                    Color mix = Color.FromArgb((color.R + grayValue) / 2, (color.G + grayValue) / 2, (color.B + grayValue) / 2);
+                    image.SetPixel(x, y, mix);
                 }
             }
+            
             image.Save(@"C:\Users\Admin\Documents\projects\LostCity\hillshade1.png");
         }
         private void GetZGrid()
         {
-            
+            minZ = double.MaxValue;
+            maxZ = double.MinValue;
             //
             
             for (int y = 0; y < pixelsY; y++)
@@ -117,11 +108,14 @@ namespace LostCityApp
 
                     double z = Blerp(cellCorners[0].Z, cellCorners[2].Z, cellCorners[1].Z, cellCorners[3].Z, tx, ty);
                     col.Add(z);
-                    
+                    if (z < minZ)
+                        minZ = z;
+                    if (z > maxZ)
+                        maxZ = z;
                 }
                 zgrid.Add(col);
             }
-            //
+            rangeZ = maxZ - minZ;
         }
         
         private List<Point3d> CellCorners(double x, double y)
@@ -148,6 +142,127 @@ namespace LostCityApp
                 
             }
             return corners;
+        }
+
+        public void AddFilledPolyline(string inputImagePath, string outputImagePath, List<Polyline> polylines, Color fillColor)
+        {
+            Brush brush = new SolidBrush(fillColor);
+            using (System.Drawing.Image imageFile = System.Drawing.Image.FromFile(inputImagePath))
+            {
+                using (Bitmap newImage = new Bitmap(pixelsX, pixelsY))
+                {
+                    using (Graphics g = Graphics.FromImage(newImage))
+                    {
+                        g.DrawImage(imageFile, new PointF(0, 0));
+                        foreach (Polyline polyline in polylines)
+                        {
+                            List<System.Drawing.PointF> points = new List<System.Drawing.PointF>();
+                            foreach (double[] p in polyline.vertices.ToList())
+                            {
+                                PointF pf = PointToPoint(p);
+                                points.Add(pf);
+                            }
+                            
+
+                            g.FillClosedCurve(brush, points.ToArray());
+
+                        }
+                        newImage.Save(outputImagePath);
+                    }
+                }
+
+            }
+        }
+        public void AddPolylineName(string inputImagePath, string outputImagePath, List<Polyline> polylines)
+        {
+            Font drawFont = new Font("Arial", 16);
+            SolidBrush drawBrush = new SolidBrush(Color.Black);
+            using (System.Drawing.Image imageFile = System.Drawing.Image.FromFile(inputImagePath))
+            {
+                using (Bitmap newImage = new Bitmap(pixelsX, pixelsY))
+                {
+                    using (Graphics g = Graphics.FromImage(newImage))
+                    {
+                        g.DrawImage(imageFile, new PointF(0, 0));
+                        int count = 1;
+                        foreach (Polyline polyline in polylines)
+                        {
+                            List<System.Drawing.PointF> points = new List<System.Drawing.PointF>();
+                            float sumX = 0;
+                            float sumY = 0;
+                            foreach (double[] p in polyline.vertices.ToList())
+                            {
+                                PointF pf = PointToPoint(p);
+                                sumX += pf.X;
+                                sumY += pf.Y;
+                            }
+                            PointF textPos = new PointF(sumX / polyline.vertices.Count(), sumY / polyline.vertices.Count());
+
+                            g.DrawString(count.ToString(), drawFont, drawBrush, textPos);
+                            count++;
+                        }
+                        newImage.Save(outputImagePath);
+                    }
+                }
+
+            }
+        }
+        public void AddPolyine(string inputImagePath, string outputImagePath, List<Polyline> polylines, Color penColor, float penWeight = 0)
+        {
+            Pen pen = new Pen(penColor, penWeight);
+            using (System.Drawing.Image imageFile = System.Drawing.Image.FromFile(inputImagePath))
+            {
+                using (Bitmap newImage = new Bitmap(pixelsX,pixelsY))
+                {
+                    using (Graphics g = Graphics.FromImage(newImage))
+                    {
+                        g.DrawImage(imageFile, new PointF(0, 0));
+                        foreach (Polyline polyline in polylines)
+                        {
+                            double sumZ = 0;
+                            List<System.Drawing.PointF> points = new List<System.Drawing.PointF>();
+                            foreach (double[] p in polyline.vertices.ToList())
+                            {
+                                PointF pf = PointToPoint(p);
+                                points.Add(pf);
+                                int x = Math.Min(Math.Max((int)pf.X, 0),pixelsX-1);
+                                int y = Math.Min(Math.Max((int)pf.Y, 0), pixelsY-1);
+                                sumZ += zgrid[y][x];
+                            }
+                            if(penWeight == 0)
+                            {
+                                double avZ = sumZ / polyline.vertices.Count();
+                                double tz = 1 - ((avZ - minZ) / rangeZ);
+                                pen.Width = (float)(tz * 3 + 0.15);
+                            }
+                            
+                            g.DrawCurve(pen, points.ToArray(), 0.5F);
+
+                        }
+                       newImage.Save(outputImagePath);
+                    }
+                }
+                
+            }
+
+            
+        }
+
+        private System.Drawing.PointF PointToPoint(double[] geoPoint)
+        {
+            double tx = (geoPoint[0] - west) / (east - west);
+            double ty = (north - geoPoint[1]) / (north - south);
+            int x = (int)(pixelsX * tx);
+            int y = (int)(pixelsY * ty);
+            return new System.Drawing.PointF(x, y);
+        }
+        private System.Drawing.Point Point3dToPoint(Point3d geoPoint)
+        {
+            double tx = (geoPoint.X - west) / (east - west);
+            double ty = (north - geoPoint.Y) / (north - south);
+            int x = (int)(pixelsX * tx);
+            int y = (int)(pixelsY * ty);
+            return new System.Drawing.Point(x, y);
         }
         private static double Lerp(double s, double e, double t)
         {
