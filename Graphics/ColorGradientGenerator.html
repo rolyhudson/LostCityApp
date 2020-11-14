@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<body>
+
+<script src="https://d3js.org/d3-color.v2.min.js"></script>
+<script src="https://d3js.org/d3-interpolate.v2.min.js"></script>
+<script src="https://d3js.org/d3-scale-chromatic.v2.min.js"></script>
+
+<p id="demo"></p>
+
+<script>
+for(var i = 0;i<256;i++){
+    var color = d3.interpolatePlasma(i/256);
+    console.log(d3.rgb(color));
+}
+</script>
+
+</body>
+</html> 

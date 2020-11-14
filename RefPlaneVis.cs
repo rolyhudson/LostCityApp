@@ -14,8 +14,9 @@ namespace LostCityApp
         public string name;
         public int groupNum;
         List<List<double>> hts;
-        List<List<Point3d>> auxHts=new List<List<Point3d>>();
-        public List<List<int>> visScore = new List<List<int>>();
+        List<List<Point3d>> auxHts = new List<List<Point3d>>();
+        public List<List<int>> visScoreViewer = new List<List<int>>();
+        public List<List<int>> visScoreViewed= new List<List<int>>();
         public List<List<bool>> observationPts = new List<List<bool>>();
         List<List<bool>> wanted = new List<List<bool>>();
         DEM dem;
@@ -96,7 +97,7 @@ namespace LostCityApp
                 for (int j = 0; j < hts[i].Count; j++)
                 {
                     //Point3d p = new Point3d(i * cell, j * -cell, hts[i][j]);
-                    Point3d p = new Point3d(dem.ptsLonLat[i][j][1], dem.ptsLonLat[i][j][0], hts[i][j]);
+                    Point3d p = new Point3d(dem.ptsLonLat[i][j][0], dem.ptsLonLat[i][j][1], hts[i][j]);
                     row.Add(p);
                 }
                 auxHts.Add(row);
@@ -104,15 +105,17 @@ namespace LostCityApp
         }
         private void setScores()
         {
-            visScore = new List<List<int>>();
-            for(int i=0;i<hts.Count;i++)
+            visScoreViewer = new List<List<int>>();
+            visScoreViewed = new List<List<int>>();
+            for (int i=0;i<hts.Count;i++)
             {
                 List<int> row = new List<int>();
                 for(int j=0;j<hts[i].Count;j++)
                 {
                     row.Add(0);
                 }
-                visScore.Add(row);
+                visScoreViewer.Add(row);
+                visScoreViewed.Add(row);
             }
         }
         private void sectorEdge(int sector, int vprow, int vpcol)
@@ -181,13 +184,13 @@ namespace LostCityApp
                 sample = auxHts[i][j];
                 viewVector = sample - viewPoint;
                 viewAngle = Vector3d.VectorAngle(Vector3d.ZAxis, viewVector);
-                //test against previous
-                //loop through prev samples
-                if(prevsample.Z!=0)
+
+                //if prevsample not set continue
+                if(prevsample.Z != 0)
                 {
                     viewVector = prevsample - viewPoint;
                     testAngle = Vector3d.VectorAngle(Vector3d.ZAxis, viewVector);
-                    if(testAngle>viewAngle)
+                    if(testAngle > viewAngle)
                     {
                         //visibility
                         visible = true;
@@ -207,9 +210,9 @@ namespace LostCityApp
                 //only add the score if the point should be analysed and is visible
                 if (visible && pWanted)
                 {
-                    //visGraph.addEdgeByIndices(new int[2] { vprow, vpcol }, new int[2] { i, j });
-                    //previous score increment on pt i j
-                    visScore[vprow][vpcol]++;
+                    visScoreViewer[vprow][vpcol]++;
+                    //do not increment if point is inside current site
+                    visScoreViewed[i][j]++;
                 }
                 
                 i += rowInc;
@@ -246,18 +249,23 @@ namespace LostCityApp
         private void writeVisSector(int s)
         {
             StreamWriter sw = new StreamWriter("sectorVisTest-"+s+".csv");
-            for (int i = 0; i < visScore.Count; i++)
+            for (int i = 0; i < visScoreViewer.Count; i++)
             {
-                for (int j = 0; j < visScore[i].Count; j++)
+                for (int j = 0; j < visScoreViewer[i].Count; j++)
                 {
-                    if (j < visScore[i].Count - 1) sw.Write(visScore[i][j] + ",");
-                    else sw.WriteLine(visScore[i][j]);
+                    if (j < visScoreViewer[i].Count - 1) sw.Write(visScoreViewer[i][j] + ",");
+                    else sw.WriteLine(visScoreViewer[i][j]);
                 }
             }
             sw.Close();
         }
-        public void writeVis(string filename)
+        public void writeVis(string filename, string scoreType = "viewer")
         {
+            List<List<int>> visScore = visScoreViewer;
+
+            if(scoreType=="viewed")
+                visScore = visScoreViewed;
+
             Console.WriteLine("Writing results file "+ filename);
             StreamWriter sw = new StreamWriter(dataFolder +"\\results\\" + filename + ".csv");
             for (int i = 0; i < visScore.Count; i++)
@@ -286,12 +294,12 @@ namespace LostCityApp
         private void writeVis()
         {
             StreamWriter sw = new StreamWriter("edgeVisTest.csv");
-            for(int i=0;i<visScore.Count;i++)
+            for(int i=0;i<visScoreViewer.Count;i++)
             {
-                for(int j=0; j<visScore[i].Count;j++)
+                for(int j=0; j<visScoreViewer[i].Count;j++)
                 {
-                    if(j<visScore[i].Count-1) sw.Write(visScore[i][j] + ",");
-                    else sw.WriteLine(visScore[i][j]);
+                    if(j<visScoreViewer[i].Count-1) sw.Write(visScoreViewer[i][j] + ",");
+                    else sw.WriteLine(visScoreViewer[i][j]);
                 }
             }
                 sw.Close();
@@ -418,9 +426,9 @@ namespace LostCityApp
                         bool pWanted = wanted[ind[0]][ind[1]];
                         if (pWanted)
                         {
-                            //visScore[ind[0]][ind[1]]++;
-                            //visGraph.addEdgeByIndices(new int[2] { vprow,vpcol},new int[2] { ind[0], ind[1] });
-                            visScore[vprow][vpcol]++;
+                            visScoreViewer[vprow][vpcol]++;
+                            //should not increment if within current site
+                            visScoreViewed[ind[0]][ind[1]]++;
                         }
                         //set aux z = to sample z
                         auxHts[ind[0]][ind[1]] = sample;
@@ -644,7 +652,6 @@ namespace LostCityApp
         }
         public void interVisibility(List<Sitio> sitios)
         {
-            //setGraph(sitios);
             for (int i = 0; i < sitios.Count; i++)
             {
                 setSubsetToAnalyse(sitios,i);
@@ -653,9 +660,6 @@ namespace LostCityApp
                     singlePoint(sitios[i].gridPoints[j][0], sitios[i].gridPoints[j][1]);
                 }
             }
-            //visGraph.bundleSitio();
-            //visGraph.bundlePoint();
-            //visGraph.reduceGraph();
         }
         private void inversesetSubsetToAnalyse(List<int[]> pts)
         {

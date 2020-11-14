@@ -1,0 +1,69 @@
+<head>
+    <meta charset="utf-8">
+    <!-- Always force latest IE rendering engine & Chrome Frame -->
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+
+    <title>Inter-visibility around Cuidad Perdida</title>
+    <meta name="description" content="">
+    <meta name="keywords" content="">
+
+    <meta name="author" content="">
+
+    <meta http-equiv="cleartype" content="on">
+
+    <link rel="shortcut icon" href="/favicon.ico">
+
+    <!-- Responsive and mobile friendly stuff -->
+    <meta name="HandheldFriendly" content="True">
+    <meta name="MobileOptimized" content="320">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Stylesheets -->
+    <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Droid Sans Mono">
+    <link href="https://fonts.googleapis.com/css?family=EB+Garamond" rel="stylesheet">
+    <link rel="stylesheet" href="../../cc.css" media="all">
+    
+
+
+</head>
+
+<body>
+<div id = "container">
+    <div id="header">
+    <div id="menu"></div>   
+    </div>
+    <div id="content">
+        
+        <h1>Viewshed algorithm</h1>
+        <P>
+            The viewshed analysis is undertaken using Wang, Robinson, and White's (2000) reference plane method, which is computationally faster than methods based on sightlines. An auxiliary elevation model is defined to determine the viewshed score for any point in the DEM. The auxiliary elevation initially matches the underlying DEM and later its auxiliary height values are updated as the algorithm progresses. The point under evaluation is referred to as the view point, the surrounding DEM is divided into eight sectors, each bounded by cardinal compass points (Figure 1).
+        </P>
+
+        <p><a href="DEM is subdivided into eight sectors.JPG"><img src="DEM is subdivided into eight sectors.JPG" alt="DEM is subdivided into eight sectors around the view point"></a></p>
+        <p>Figure 1. DEM is subdivided into eight sectors around the view point.</p><br>
+        
+        <p>The eight boundaries between sectors are processed first. These can be analysed using two-dimensional geometry as the points on each boundary lie in a single vertical plane. The process proceeds outwards from the view point, each time a sample point (n) from the DEM and previous point (n-1) from the auxiliary DEM are selected (Figure 2). Two vectors are defined from the viewpoint to the sample point and previous point (sample vector and previous vector) (Figure 2). Two vertical angles are compared to determine if the sample point is visible from the view point. The first angle (zvs) is between the vertical vector above the view point and the sample vector. The second angle (zvp) is between a vertical vector above the view point and the previous vector. If angle zvp is greater than zvs the point is visible and the visibility score of the view point is incremented, the process continues to the next sample point. If zvp is smaller than zvs the sample point is not visible (as shown in Figure 2), it is projected onto the previous vector. The elevation of the corresponding point in the auxiliary grid is updated to match and used to determine the visibility of the following sample points. </p>
+
+        <p><a href="Processing a sector boundary.JPG"><img src="Processing a sector boundary.JPG" alt="Processing a sector boundary"></a></p>
+        <p>Figure 2. Processing a sector boundary.</p><br>
+
+        <p>To process a single sector, the sample points within the sector are first identified and ordered (Figure 3). The order of processing depends on the sector; for example, Figure 3 shows the first sector where each column of points (m) is processed sequentially outwards from the view point. For each column, the points are ordered by row (n). </p>
+
+        <p><a href="Sample points with a sector are identified and ordered.JPG"><img src="Sample points with a sector are identified and ordered.JPG" alt="Sample points with a sector are identified and ordered"></a></p>
+        <p>Figure 3. Sample points with a sector are identified and ordered.</p><br>
+
+        <p>The sample point at (m, n) is selected from the DEM and two further points are identified (x point and y point) in the auxiliary DEM (Figure 4). The x and y points are always located between the sample point and view point and are used with the view point to define the reference plane. The relationship between the sample point and the x and y points depends on the sector. In sector 0 (Figure 4) the x and y points can be defined as (m-1, n-1) and (m-1, n) respectively. Once the reference plane is defined, the sample point at (m, n) is projected vertically into the reference plane. If the elevation of the projected point is less than the sample point’s elevation, the sample point is visible from the view point (Figure 4 left). Subsequently, the view score of the view point is incremented, and the process moves to the next sample point. If the elevation of the projected point is higher than the sample point’s elevation (Figure 4 right), then the sample point is not visible from the view point. The elevation of the projected point is stored in the corresponding point in the auxiliary DEM and the process moves to the next sample point. Figure 5 shows the visible sample points for the example sector in the figures.</p>
+
+        <p><a href="Determining visibility with a reference plane.JPG"><img src="Determining visibility with a reference plane.JPG" alt="Determining visibility with a reference plane"></a></p>
+        <p>Figure 4. Determining visibility with a reference plane.</p><br>
+
+        <p>Using the reference plane method, an entire DEM can be processed and a view score assigned to each point defining a cumulative viewshed. To measure inter-visibility between settlements, cumulative viewsheds need to be determined between specific subsets of the original DEM where each subset represents points in the DEM contained by the boundary of an individual settlement. To measure terrain visibility, cumulative viewsheds are generated between specific subsets of the original DEM and the rest of the DEM. The implementation of the RP algorithm in this work allows for two distinct inputs: the viewpoints and the observed points. </p>
+
+        <p><a href="All visible sample points in sector 0.JPG"><img src="All visible sample points in sector 0.JPG" alt="All visible sample points in sector 0"></a></p>
+        <p>Figure 5. All visible sample points in sector 0.</p>
+
+
+    </div>
+    <div id="footer"></div>
+</div>         
+</body>

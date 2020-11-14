@@ -65,7 +65,7 @@ namespace LostCityApp
                 j = r.Next(30, topo.Count-30);
                 ele = topo[i][j].Z;
                 pointInUse = checkPointUse(i, j);
-                if (this.useDistToWater) noWater = testDrySite(topo[i][j].Y, topo[i][j].X);
+                if (this.useDistToWater) noWater = testDrySite(topo[i][j].X, topo[i][j].Y);
                 if (this.useSlope) wrongSlope = testSlope(i,j);
             }
             Sitio newS = new Sitio();

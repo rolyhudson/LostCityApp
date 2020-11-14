@@ -9,10 +9,9 @@ a:hover {
 }
 
 img{
-	width: 70%;
-	position: absolute;
+	width: 100%;
 	margin: auto;
-    top: 0;
+
 }
 #header{
 position: fixed;

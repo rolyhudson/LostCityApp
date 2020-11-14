@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using BH.oM.Graphics;
 using BH.Engine.Graphics;
+using System.IO;
 
 namespace LostCityApp
 {
@@ -28,14 +29,17 @@ namespace LostCityApp
         int pixelsX;
         int pixelsY;
         List<List<double>> zgrid = new List<List<double>>();
+        string folder;
 
         Gradient HypsometricGradient = new Gradient();
-        public Image(DEM dem, int pixelsX, int pixelsY )
+        List<Color> ScoreGradient = new List<Color>();
+        public Image(DEM dem, int pixelsX, int pixelsY , string imagefolder)
         {
+            this.folder = imagefolder;
             this.dem = dem;
             this.pixelsX = pixelsX;
             this.pixelsY = pixelsY;
-
+            
             west = dem.demPts[0][0].X;
              east = dem.demPts[0][dem.demPts[0].Count() - 1].X;
              demX = Math.Abs(west - east);
@@ -45,11 +49,16 @@ namespace LostCityApp
 
              xCell = demX / pixelsX;
              yCell = demY / pixelsY;
+            
+        }
+        public void setBaseImage()
+        {
             GetZGrid();
-            SetColourGradient();
+            SetHypsometricGradient();
+            
             GenImage();
         }
-        private void SetColourGradient()
+        private void SetHypsometricGradient()
         {
             List<Color> colors = new List<Color>();
             colors.Add(Color.FromArgb(0, 64, 0));
@@ -59,6 +68,35 @@ namespace LostCityApp
             colors.Add(Color.FromArgb(208, 184, 170));
             List<decimal> decimals = new List<decimal>() { 0, (decimal)0.25, (decimal)0.5 , (decimal)0.75, 1};
             HypsometricGradient = BH.Engine.Graphics.Create.Gradient(colors, decimals);
+        }
+
+        private void SetScoreGradient()
+        {
+            ScoreGradient = new List<Color>();
+
+            using (StreamReader sr = new StreamReader(@"..\..\Graphics\interpolatePlasmaRGB.csv"))
+            {
+                int s = 0;
+                string line = sr.ReadLine();
+                while (line != null)
+                {
+                    string[] parts = line.Split(',');
+                    //int r = (int)(Double.Parse(parts[0]) * 255);
+                    //int g = (int)(Double.Parse(parts[1]) * 255);
+                    //int b = (int)(Double.Parse(parts[2]) * 255);
+                    int r = 0;
+                    bool result = int.TryParse(parts[0], out r);
+                    
+                    if (!result)
+                        s++;
+                        
+                    int g = int.Parse(parts[1]);
+                    int b = int.Parse(parts[2]);
+                    ScoreGradient.Add(Color.FromArgb(r, g, b));
+                    line = sr.ReadLine();
+                    
+                }
+            }
         }
         private void GenImage()
         {
@@ -84,7 +122,7 @@ namespace LostCityApp
                 }
             }
             
-            image.Save(@"C:\Users\Admin\Documents\projects\LostCity\hillshade1.png");
+            image.Save(folder +"\\hillshade1.png");
         }
         private void GetZGrid()
         {
@@ -144,10 +182,134 @@ namespace LostCityApp
             return corners;
         }
 
-        public void AddFilledPolyline(string inputImagePath, string outputImagePath, List<Polyline> polylines, Color fillColor)
+        public void MarkSites(string inputImage, string outputImage, List<Sitio> sitios )
+        {
+            using (System.Drawing.Image imageFile = System.Drawing.Image.FromFile(folder + "\\" + inputImage))
+            {
+                using (Bitmap newImage = new Bitmap(pixelsX, pixelsY))
+                {
+                    using (Graphics g = Graphics.FromImage(newImage))
+                    {
+                        g.DrawImage(imageFile, new PointF(0, 0));
+                        foreach (Sitio sitio in sitios)
+                        {
+                            Brush brush = new SolidBrush(Color.Red);
+                            foreach (int[] p in sitio.gridPoints)
+                            {
+                                Point3d centre = dem.demPts[p[0]][p[1]];
+                                double[] pc = new double[] { centre.X, centre.Y };
+                                PointF pf = PointToPoint(pc);
+                                g.FillEllipse(brush,pf.X - 4 , pf.Y - 4,8,8);
+                            }
+                        }
+                        newImage.Save(folder + "\\" + outputImage);
+                    }
+                }
+
+            }
+        }
+
+        public void MarkScores(string inputImage, string outputImage, string scoreFile, double min = 0, double max = 0)
+        {
+            int[] minMax = MinMax(scoreFile);
+            if (max ==0)
+            {
+                
+                min = Math.Log(1);
+                max = Math.Log(minMax[1]);
+            }
+            min = Math.Log(20);
+            SetScoreGradient();
+            using (System.Drawing.Image imageFile = System.Drawing.Image.FromFile(folder + "\\" + inputImage))
+            {
+                using (Bitmap newImage = new Bitmap(pixelsX, pixelsY))
+                {
+                    using (Graphics g = Graphics.FromImage(newImage))
+                    {
+                        g.DrawImage(imageFile, new PointF(0, 0));
+                        double inc = minMax[1] / 10;
+                        for(int i = 0; i < 10; i++)
+                        {
+                            double s = Math.Log(1);
+                            if (i>0) 
+                                s = Math.Log(i * inc);
+                            
+                            //get colour index
+                            int index = (int)(((s - min) / (max - min)) * 255.0);
+                            if (index > 255)
+                                index = 255;
+                            if (index < 0)
+                                index = 0;
+                            Brush brush = new SolidBrush(ScoreGradient[index]);
+                            g.FillRectangle(brush, i*20, 0, 20, 20);
+                        }
+                        using(StreamReader sr = new StreamReader(scoreFile))
+                        {
+                            string line = sr.ReadLine();
+                            int row = 0;
+                            while (line != null)
+                            {
+                                string[] parts = line.Split(',');
+                                int col = 0;
+                                foreach(string p in parts)
+                                {
+                                    if (int.Parse(p) > 0)
+                                    {
+                                        double s = Math.Log(int.Parse(p));
+
+                                        //get colour index
+                                        int index = (int)(((s - min) / (max - min))*255.0);
+                                        if (index > 255)
+                                            index = 255;
+                                        if (index < 0)
+                                            index = 0;
+                                        Point3d centre = dem.demPts[row][col];
+                                        double[] pc = new double[] { centre.X, centre.Y };
+                                        PointF pf = PointToPoint(pc);
+                                        Brush brush = new SolidBrush(ScoreGradient[index]);
+                                        g.FillRectangle(brush, pf.X - 5, pf.Y - 5, 11, 11);
+                                    }
+                                    col++;
+                                }
+                                line = sr.ReadLine();
+                                row++;
+                            }
+                            
+                        }
+
+                        newImage.Save(folder + "\\" + outputImage);
+                    }
+                }
+
+            }
+        }
+        private int[] MinMax(string scoreFile)
+        {
+            int min = int.MaxValue;
+            int max = int.MinValue;
+            using (StreamReader sr = new StreamReader(scoreFile))
+            {
+                string line = sr.ReadLine();
+                while (line != null)
+                {
+                    string[] parts = line.Split(',');
+                    foreach (string p in parts)
+                    {
+                        int s = int.Parse(p);
+                        if (s < min)
+                            min = s;
+                        if (s > max)
+                            max = s;
+                    }
+                    line = sr.ReadLine();
+                }
+            }
+            return new int[] { min, max };
+        }
+        public void AddFilledPolyline(string inputImage, string outputImage, List<Polyline> polylines, Color fillColor)
         {
             Brush brush = new SolidBrush(fillColor);
-            using (System.Drawing.Image imageFile = System.Drawing.Image.FromFile(inputImagePath))
+            using (System.Drawing.Image imageFile = System.Drawing.Image.FromFile(folder + "\\" + inputImage))
             {
                 using (Bitmap newImage = new Bitmap(pixelsX, pixelsY))
                 {
@@ -167,17 +329,17 @@ namespace LostCityApp
                             g.FillClosedCurve(brush, points.ToArray());
 
                         }
-                        newImage.Save(outputImagePath);
+                        newImage.Save(folder + "\\" + outputImage);
                     }
                 }
 
             }
         }
-        public void AddPolylineName(string inputImagePath, string outputImagePath, List<Polyline> polylines)
+        public void AddPolylineName(string inputImage, string outputImage, List<Polyline> polylines)
         {
             Font drawFont = new Font("Arial", 16);
             SolidBrush drawBrush = new SolidBrush(Color.Black);
-            using (System.Drawing.Image imageFile = System.Drawing.Image.FromFile(inputImagePath))
+            using (System.Drawing.Image imageFile = System.Drawing.Image.FromFile(folder + "\\" + inputImage))
             {
                 using (Bitmap newImage = new Bitmap(pixelsX, pixelsY))
                 {
@@ -201,16 +363,16 @@ namespace LostCityApp
                             g.DrawString(count.ToString(), drawFont, drawBrush, textPos);
                             count++;
                         }
-                        newImage.Save(outputImagePath);
+                        newImage.Save(folder + "\\" + outputImage);
                     }
                 }
 
             }
         }
-        public void AddPolyine(string inputImagePath, string outputImagePath, List<Polyline> polylines, Color penColor, float penWeight = 0)
+        public void AddPolyine(string inputImage, string outputImage, List<Polyline> polylines, Color penColor, float penWeight = 0)
         {
             Pen pen = new Pen(penColor, penWeight);
-            using (System.Drawing.Image imageFile = System.Drawing.Image.FromFile(inputImagePath))
+            using (System.Drawing.Image imageFile = System.Drawing.Image.FromFile(folder + "\\" + inputImage))
             {
                 using (Bitmap newImage = new Bitmap(pixelsX,pixelsY))
                 {
@@ -233,13 +395,13 @@ namespace LostCityApp
                             {
                                 double avZ = sumZ / polyline.vertices.Count();
                                 double tz = 1 - ((avZ - minZ) / rangeZ);
-                                pen.Width = (float)(tz * 3 + 0.15);
+                                pen.Width = (float)(tz * 6 + 0.15);
                             }
                             
                             g.DrawCurve(pen, points.ToArray(), 0.5F);
 
                         }
-                       newImage.Save(outputImagePath);
+                       newImage.Save(folder + "\\" + outputImage);
                     }
                 }
                 
