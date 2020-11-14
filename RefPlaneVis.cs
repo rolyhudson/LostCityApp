@@ -15,50 +15,29 @@ namespace LostCityApp
         public int groupNum;
         List<List<double>> hts;
         List<List<Point3d>> auxHts = new List<List<Point3d>>();
+        //scores for the observer
         public List<List<int>> visScoreViewer = new List<List<int>>();
+        //scores for the observed
         public List<List<int>> visScoreViewed= new List<List<int>>();
-        public List<List<bool>> observationPts = new List<List<bool>>();
+        //points we want to test
         List<List<bool>> wanted = new List<List<bool>>();
+
+        List<int[]> current = new List<int[]>();
         DEM dem;
-        double cell;
+
         string dataFolder;
        
-        public RefPlaneVis(DEM eledata, double cellSize, string groupname, int groupNumber, string data)
+        public RefPlaneVis(DEM eledata, string groupname, int groupNumber, string data)
         {
             dem = eledata;
             hts = eledata.hts;
             name = groupname;
             groupNum = groupNumber;
-            cell = cellSize;
             dataFolder = data;
             setScores();
             
         }
-        
-        private void setObsPoints(List<List<int[]>> pts)
-        {
-            //first set all false
-            observationPts = new List<List<bool>>();
-            for (int i = 0; i < hts.Count; i++)
-            {
-                List<bool> row = new List<bool>();
-                for (int j = 0; j < hts[i].Count; j++)
-                {
 
-                    row.Add(false);
-                }
-                observationPts.Add(row);
-            }
-            //set true only those in pts
-            //set wanted to match input list
-            foreach (List<int[]> sitiopts in pts)
-            {
-                foreach (int[] pt in sitiopts)
-                {
-                    observationPts[pt[0]][pt[1]] = true;
-                }
-            }
-        }
         private void setAllWanted()
         {
             
@@ -89,14 +68,13 @@ namespace LostCityApp
        
         private void setAux()
         {
-            //resets the auxilalry grid 
+            //resets the auxiliary grid 
             auxHts = new List<List<Point3d>>();
             for (int i = 0; i < hts.Count; i++)
             {
                 List<Point3d> row = new List<Point3d>();
                 for (int j = 0; j < hts[i].Count; j++)
                 {
-                    //Point3d p = new Point3d(i * cell, j * -cell, hts[i][j]);
                     Point3d p = new Point3d(dem.ptsLonLat[i][j][0], dem.ptsLonLat[i][j][1], hts[i][j]);
                     row.Add(p);
                 }
@@ -111,13 +89,16 @@ namespace LostCityApp
             {
                 List<int> row = new List<int>();
                 for(int j=0;j<hts[i].Count;j++)
-                {
                     row.Add(0);
-                }
                 visScoreViewer.Add(row);
+                //make two distinct scores
+                row = new List<int>();
+                for (int j = 0; j < hts[i].Count; j++)
+                    row.Add(0);
                 visScoreViewed.Add(row);
             }
         }
+        
         private void sectorEdge(int sector, int vprow, int vpcol)
         {
             int rowInc = 0;
@@ -176,8 +157,8 @@ namespace LostCityApp
             double viewAngle = 0;
             double testAngle = 0;
             Vector3d viewVector = new Vector3d();
-            bool visible =true;
-            double h = 0;
+            Vector3d testVector = new Vector3d();
+            bool visible = true;
             
             while(inside)
             {
@@ -185,11 +166,11 @@ namespace LostCityApp
                 viewVector = sample - viewPoint;
                 viewAngle = Vector3d.VectorAngle(Vector3d.ZAxis, viewVector);
 
-                //if prevsample not set continue
+                //if previous sample not set continue
                 if(prevsample.Z != 0)
                 {
-                    viewVector = prevsample - viewPoint;
-                    testAngle = Vector3d.VectorAngle(Vector3d.ZAxis, viewVector);
+                    testVector = prevsample - viewPoint;
+                    testAngle = Vector3d.VectorAngle(Vector3d.ZAxis, testVector);
                     if(testAngle > viewAngle)
                     {
                         //visibility
@@ -199,19 +180,23 @@ namespace LostCityApp
                     {
                         visible = false;
                         //set ht equal to intersection pt
-                        h = cell / Math.Tan(testAngle);
-                        auxHts[i][j] = new Point3d(sample.X,sample.Y, prevsample.Z+h);
+                        double a = 0;
+                        double b = 0;
+                        Line test = new Line(viewPoint, testVector, 1);
+                        Line vert = new Line(sample, Vector3d.ZAxis, 1);
+                        bool s = Rhino.Geometry.Intersect.Intersection.LineLine(test, vert, out a, out b);
+                        Point3d inter = vert.PointAt(b);
+                        auxHts[i][j] = inter;
                         
                     }
                     
                 }
                 prevsample = auxHts[i][j];
                 bool pWanted = wanted[i][j];
-                //only add the score if the point should be analysed and is visible
+                //only increment scores if the point should be analysed and is visible
                 if (visible && pWanted)
                 {
                     visScoreViewer[vprow][vpcol]++;
-                    //do not increment if point is inside current site
                     visScoreViewed[i][j]++;
                 }
                 
@@ -232,7 +217,7 @@ namespace LostCityApp
         public void singlePoint(int i, int j)
         {
             setAux();
-            //score all rh edge diagonal or NSEW
+            //score all edges
             for (int s = 0; s < 8; s++)
             {
                 sectorEdge(s, i, j);
@@ -245,7 +230,17 @@ namespace LostCityApp
             }
             
         }
-        
+        public void sectorEdgeTest(int i, int j)
+        {
+            setAllWanted();
+            setAux();
+            //score all edges
+            for (int s = 0; s < 8; s++)
+            {
+                sectorEdge(s, i, j);
+            }
+
+        }
         private void writeVisSector(int s)
         {
             StreamWriter sw = new StreamWriter("sectorVisTest-"+s+".csv");
@@ -306,14 +301,13 @@ namespace LostCityApp
         }
         private void processSector(int sector, int vprow, int vpcol)
         {
-           
+            //the x point and y point for the plane
             Point3d xp = new Point3d();
             Point3d yp = new Point3d();
             //vp is viewer location
-            Point3d vp = new Point3d();
-            vp = auxHts[vprow][vpcol];
+            Point3d vp = auxHts[vprow][vpcol];
             
-            //ref to plane point relative to sample
+            //ref to plane point relative to sample point 
             int xrefi = 0;
             int yrefi = 0;
             int xrefj = 0;
@@ -389,7 +383,7 @@ namespace LostCityApp
                     break;
             }
             //ij is the first point to test
-            //are the view point indices in the grid
+            //are the view point indices in the dem grid?
             bool inside = insidegrid(i, j);
             Point3d sample = new Point3d();
             List<int[]> indices = new List<int[]>();
@@ -402,10 +396,10 @@ namespace LostCityApp
                 //checkSector(indices,sector);
                 foreach (int[] ind in indices)
                 {
-                    //get the xpoint and y point
+                    //get the x point and y point
                     xp = auxHts[ind[0] + xrefi][ind[1] + xrefj];
                     yp = auxHts[ind[0] + yrefi][ind[1] + yrefj];
-                    //make the plane
+                    //make the view plane
                     Plane vPlane = new Plane(vp, xp, yp);
                     sample = auxHts[ind[0]][ind[1]];
                     vert = new Line(sample, Vector3d.ZAxis, 1);
@@ -415,19 +409,18 @@ namespace LostCityApp
 
                     if (planePt.Z > sample.Z)
                     {
-                        //no sightline
+                        //not visible
                         //set aux z = to projected plane pt z
                         auxHts[ind[0]][ind[1]] = planePt;
                     }
                     else
                     {
-                        //sightline
+                        //visible
                         //check if we need it
                         bool pWanted = wanted[ind[0]][ind[1]];
                         if (pWanted)
                         {
                             visScoreViewer[vprow][vpcol]++;
-                            //should not increment if within current site
                             visScoreViewed[ind[0]][ind[1]]++;
                         }
                         //set aux z = to sample z
@@ -637,23 +630,27 @@ namespace LostCityApp
         }
         public void terrainVisibility(List<List<int[]>> pts)
         {
-            setObsPoints(pts);
             foreach (List<int[]> sitiopts in pts)
             {
-                //set everything but the current site for analysis
-                inversesetSubsetToAnalyse(sitiopts);
-                //printwanted();
-                foreach (int[] pt  in sitiopts)
-                {
-                    singlePoint(pt[0], pt[1]);
-                }
-                
+                terrainVisibility(sitiopts);
+            }
+        }
+        public void terrainVisibility(List<int[]> sitiopts)
+        {
+            current = sitiopts;
+            //set everything but the current site for analysis
+            inverseSubsetToAnalyse(sitiopts);
+
+            foreach (int[] pt in sitiopts)
+            {
+                singlePoint(pt[0], pt[1]);
             }
         }
         public void interVisibility(List<Sitio> sitios)
         {
             for (int i = 0; i < sitios.Count; i++)
             {
+                //set all other sites and exclude site for analysis
                 setSubsetToAnalyse(sitios,i);
                 for (int j = 0; j < sitios[i].gridPoints.Count; j++)
                 {
@@ -661,7 +658,7 @@ namespace LostCityApp
                 }
             }
         }
-        private void inversesetSubsetToAnalyse(List<int[]> pts)
+        private void inverseSubsetToAnalyse(List<int[]> pts)
         {
             //set all true
             setAllWanted();

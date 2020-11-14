@@ -81,15 +81,7 @@ namespace LostCityApp
                 while (line != null)
                 {
                     string[] parts = line.Split(',');
-                    //int r = (int)(Double.Parse(parts[0]) * 255);
-                    //int g = (int)(Double.Parse(parts[1]) * 255);
-                    //int b = (int)(Double.Parse(parts[2]) * 255);
-                    int r = 0;
-                    bool result = int.TryParse(parts[0], out r);
-                    
-                    if (!result)
-                        s++;
-                        
+                    int r= int.Parse(parts[0]);
                     int g = int.Parse(parts[1]);
                     int b = int.Parse(parts[2]);
                     ScoreGradient.Add(Color.FromArgb(r, g, b));
@@ -182,8 +174,9 @@ namespace LostCityApp
             return corners;
         }
 
-        public void MarkSites(string inputImage, string outputImage, List<Sitio> sitios )
+        public void MarkSites(string inputImage, string outputImage, string settlementFile)
         {
+            Brush brush = new SolidBrush(Color.Red);
             using (System.Drawing.Image imageFile = System.Drawing.Image.FromFile(folder + "\\" + inputImage))
             {
                 using (Bitmap newImage = new Bitmap(pixelsX, pixelsY))
@@ -191,17 +184,27 @@ namespace LostCityApp
                     using (Graphics g = Graphics.FromImage(newImage))
                     {
                         g.DrawImage(imageFile, new PointF(0, 0));
-                        foreach (Sitio sitio in sitios)
+                        using (StreamReader sr = new StreamReader(settlementFile))
                         {
-                            Brush brush = new SolidBrush(Color.Red);
-                            foreach (int[] p in sitio.gridPoints)
+                            string line = sr.ReadLine();
+                            //one settlement per line in x , y pair sequence
+                            while (line != null)
                             {
-                                Point3d centre = dem.demPts[p[0]][p[1]];
-                                double[] pc = new double[] { centre.X, centre.Y };
-                                PointF pf = PointToPoint(pc);
-                                g.FillEllipse(brush,pf.X - 4 , pf.Y - 4,8,8);
+                                string[] parts = line.Split(',');
+                                for(int p = 0; p < parts.Length; p+=2)
+                                {
+                                    int i = int.Parse(parts[p]);
+                                    int j = int.Parse(parts[p+1]);
+                                    Point3d centre = dem.demPts[i][j];
+                                    double[] pc = new double[] { centre.X, centre.Y };
+                                    PointF pf = PointToPoint(pc);
+                                    g.FillEllipse(brush, pf.X, pf.Y, 8, 8);
+                                }
+                                line = sr.ReadLine();
                             }
+
                         }
+                        
                         newImage.Save(folder + "\\" + outputImage);
                     }
                 }

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+
+body {
+  font: 10px sans-serif;
+}
+
+.axis path,
+.axis line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+.label{
+  
+  fill: #000;
+}
+
+.title{
+  font-size: 18px;
+  font-weight: bold;
+}
+
+</style>
+<body>
+<script src="https://d3js.org/d3.v4.min.js"></script>
+<script src="ScatterPlot.js"></script>
+<script>
+
+
+var files = ["terrainVisScores.csv",
+"interVisScores.csv"]
+
+
+
+for(var i=0;i<files.length;i++){
+  d3.queue()
+  .defer(d3.text,files[i])
+  .await(process(files[i]));
+  }
+
+function process(file){
+  return function(error,data){
+    console.log(file)
+    var data = d3.csvParseRows(data, function(d) {return Number(d);});
+    var actual = data[0];
+    data.splice(0,1);
+    data.sort(function(a, b){return a - b});
+    data.splice(0,0,actual);
+    var title=[]
+
+    if (file.includes("terrain")) title.push("Terrain visibility scores");
+    if (file.includes("inter")) title.push("Inter-visibility scores, random sites located where:");
+
+    title.push("- elevation range is 380 to 1750 metres");
+    switch (file){
+      case"terrainVisScores.csv":
+        title.push("- minimum distance to water source 125 metres");
+        title.push("- terrain slope is between 16 and 36 degrees");
+        break;
+      case"interVisScores.csv":
+        title.push("- minimum distance to water source 125 metres");
+        title.push("- terrain slope is between 16 and 36 degrees");
+        break;
+    }
+    const scatter = new ScatterPlot(data,title,file);
+    scatter.createGraph();
+  }
+}
+</script>

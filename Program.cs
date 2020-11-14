@@ -10,7 +10,11 @@ namespace LostCityApp
     {
         static void Main()
         {
+            
             LostCityObjects lostCityObjects = new LostCityObjects();
+            
+            lostCityObjects.Analyse();
+            //lostCityObjects.ImageGenerator(1);
         }
     }
 }

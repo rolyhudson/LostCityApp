@@ -26,13 +26,49 @@ namespace LostCityApp
         bool getInterVis = true;
 
         int nRandomConfigs = 100;
-        string dataFolder = @"C:\Users\Admin\Documents\projects\LostCity\app\LostCityApp\Data";
-        string imageFolder = @"C:\Users\Admin\Documents\projects\LostCity\app\LostCityApp\Graphics\Images";
+        string dataFolder = @"..\..\Data";
+        string imageFolder = @"..\..\Graphics\Images";
 
         Image image;
         public LostCityObjects()
+        {}
+        public void Analyse()
         {
+            loadData();
+            //TestSectorEdge();
+            analyseVisibility();
+            totalScore();
+        }
+        public void ImageGenerator(int siteIndex)
+        {
+            loadData();
+            image = new Image(dem, 2000, 2000, imageFolder);
+            //base map
+            //image.setBaseImage();
+
+            //overlay river network
+            //image.AddPolyine("hillshade1.png", "hillshade1Rios.png", rios, Color.FromArgb(13, 19, 13));
+
+            //overlay polyline boundaries on sites
+            //image.AddFilledPolyline(@"..\..\Graphics\Images\hillshade1Rios.png", @"..\..\Graphics\Images\hillshade1RiosSitios.png", boundaries, Color.FromArgb(120,245, 35, 188));
+
+            //maps of actual sites.
+            image.MarkSites("baseGrayLight.png", "actualSitios_1.png", @"..\..\Data\results\settlement0.csv");
+            image.MarkScores("baseGrayLight.png", "actualInterVisibility.png", @"..\..\Data\results\interVisTest0.csv", 1, 0);
+            image.MarkScores("baseGrayLight.png", "actualTerrainVisibility_Viewed.png", @"..\..\Data\results\terrainVis_viewed0.csv", 1, 0);
+            image.MarkScores("baseGrayLight.png", "actualTerrainVisibility_Viewer.png", @"..\..\Data\results\terrainVis0.csv", 1, 0);
+
+            //maps of best performing random sites.
+            image.MarkSites("baseGrayLight.png", "randomSitios_1.png", @"..\..\Data\results\settlement" + siteIndex + ".csv");
+            //image.MarkScores("baseGrayLight.png", "randomInterVisibility.png", @"..\..\Data\results\interVisTest"+siteIndex+".csv", 1, 0);
+            image.MarkScores("baseGrayLight.png", "randomTerrainVisibility_Viewed.png", @"..\..\Data\results\terrainVis_viewed" + siteIndex + ".csv", 1, 0);
+            image.MarkScores("baseGrayLight.png", "randomTerrainVisibility_Viewer.png", @"..\..\Data\results\terrainVis" + siteIndex + ".csv", 1, 0);
+            image.MarkSites("baseGrayLight.png", "randomSitios_1.png", @"..\..\Data\results\settlement" + siteIndex + ".csv");
+
             
+        }
+        private void loadData()
+        {
             Console.WriteLine("Loading DEM");
             dem = new DEM(dataFolder, 11.140131, 10.975654, -74.000914, -73.836385);
             if (!dem.success)
@@ -40,26 +76,14 @@ namespace LostCityApp
                 Console.WriteLine("Failed to load DEM. Check data folder path is correctly defined");
                 return;
             }
-            
+
             Console.WriteLine("Loading reference objects");
             if (!readObjects())
             {
                 Console.WriteLine("Failed to load GeoReferenceObjects.");
                 return;
             }
-            image = new Image(dem,2000, 2000, imageFolder);
-            //image.MarkScores("baseGrayLight.png", "actualInterVisibility.png", @"C:\Users\Admin\Documents\projects\LostCity\app\LostCityApp\Data\results\interVisTest0.csv", 1, 0);
-            //image.MarkScores("baseGrayLight.png", "actualTerrainVisibility.png", @"C:\Users\Admin\Documents\projects\LostCity\app\LostCityApp\Data\results\terrainVis0.csv", 1, 0);
-            image.MarkScores("baseGrayLight.png", "actualTerrainVisibilityObserved.png", @"C:\Users\Admin\Documents\projects\LostCity\app\LostCityApp\Data\results\terrainVis_viewed0.csv", 1, 0);
-            //image.AddPolyine("hillshade1.png", "hillshade1Rios.png", rios, Color.FromArgb(13, 19, 13));
-            //image.AddFilledPolyline(@"C:\Users\Admin\Documents\projects\LostCity\hillshade1Rios.png", @"C:\Users\Admin\Documents\projects\LostCity\hillshade1RiosSitios.png", boundaries, Color.FromArgb(120,245, 35, 188));
-            analyseVisibility();
-            totalScore();
-
         }
-
-        
-        
         private bool readObjects()
         {
             try
@@ -155,18 +179,23 @@ namespace LostCityApp
             }
             sw.Close();
         }
+        private void TestSectorEdge()
+        {
+
+            RefPlaneVis rpv = new RefPlaneVis(dem, "test", 0, dataFolder);
+            rpv.sectorEdgeTest(100, 100);
+            rpv.writeVis("sectoredgeTest" + 0);
+            rpv.writeVis("sectoredgeTest_viewed" + 0, "viewed");
+        }
         private void analyseVisibility()
         {
             Console.WriteLine("Starting analysis of existing sites");
             getIndices();
-            //image.MarkSites("baseGray.png", "SitiosPoints.png", sitios);
-            //RandomSettlement rs = new RandomSettlement(sitios, dem.demPts, this.rioTree, dem.slope, true, true, dataFolder);
-            //image.MarkSites("baseGray.png", "RandomSitiosPoints.png", rs.sitiosRandom);
             analyseDistToWater();
             printwantedIndices(dataFolder + "\\results\\settlement0.csv");
             if (this.getTerrain)
             {
-                RefPlaneVis rpv = new RefPlaneVis(dem, 90, "actual sites terrain", 0, dataFolder);
+                RefPlaneVis rpv = new RefPlaneVis(dem, "actual sites terrain", 0, dataFolder);
                 rpv.terrainVisibility(indicesForAnalysis);
                 siteScores(rpv);
                 rpv.writeVis("terrainVis" + 0);
@@ -175,7 +204,7 @@ namespace LostCityApp
             }
             if (this.getInterVis)
             {
-                RefPlaneVis rpv = new RefPlaneVis(dem, 90, "actual sites intervisibility", 0, dataFolder);
+                RefPlaneVis rpv = new RefPlaneVis(dem, "actual sites intervisibility", 0, dataFolder);
                 rpv.interVisibility(sitios);
                 siteScores(rpv);
                 rpv.writeVis("interVisTest" + 0);
@@ -197,7 +226,7 @@ namespace LostCityApp
                 if (getTerrain)
                 {
                     Console.WriteLine("Starting terrain analysis of random site " + r);
-                    RefPlaneVis rpv = new RefPlaneVis(dem, 90, "random sites terrain " + (r + 1), (r + 1), dataFolder);
+                    RefPlaneVis rpv = new RefPlaneVis(dem, "random sites terrain " + (r + 1), (r + 1), dataFolder);
                     rpv.terrainVisibility(rs.indicesForAnalysis);
                     rpv.writeVis("terrainVis" + (r + 1));
                     rpv.writeVis("terrainVis_viewed" + (r + 1), "viewed");
@@ -206,7 +235,7 @@ namespace LostCityApp
                 if (getInterVis)
                 {
                     Console.WriteLine("Starting intervisibility analysis of random site " + r);
-                    RefPlaneVis rpv = new RefPlaneVis(dem, 90, "random sites intervisibility " + (r + 1), (r + 1), dataFolder);
+                    RefPlaneVis rpv = new RefPlaneVis(dem, "random sites intervisibility " + (r + 1), (r + 1), dataFolder);
                     rpv.interVisibility(rs.sitiosRandom);
                     rpv.writeVis("interVisTest" + (r + 1));
                     interVisResults.Add(rpv);
@@ -256,6 +285,7 @@ namespace LostCityApp
         
         private void getIndices()
         {
+            //sites as sets of indices
             indicesForAnalysis = new List<List<int[]>>();
             for (int s = 0; s < sitios.Count; s++)
             {
