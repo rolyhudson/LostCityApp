@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using BH.oM.Graphics;
 using BH.Engine.Graphics;
 using System.IO;
+using System.Drawing.Drawing2D;
 
 namespace LostCityApp
 {
@@ -176,7 +177,7 @@ namespace LostCityApp
 
         public void MarkSites(string inputImage, string outputImage, string settlementFile)
         {
-            Brush brush = new SolidBrush(Color.Red);
+            Brush brush = new SolidBrush(Color.FromArgb(57, 255, 20));
             using (System.Drawing.Image imageFile = System.Drawing.Image.FromFile(folder + "\\" + inputImage))
             {
                 using (Bitmap newImage = new Bitmap(pixelsX, pixelsY))
@@ -184,6 +185,7 @@ namespace LostCityApp
                     using (Graphics g = Graphics.FromImage(newImage))
                     {
                         g.DrawImage(imageFile, new PointF(0, 0));
+                        
                         using (StreamReader sr = new StreamReader(settlementFile))
                         {
                             string line = sr.ReadLine();
@@ -198,7 +200,7 @@ namespace LostCityApp
                                     Point3d centre = dem.demPts[i][j];
                                     double[] pc = new double[] { centre.X, centre.Y };
                                     PointF pf = PointToPoint(pc);
-                                    g.FillEllipse(brush, pf.X, pf.Y, 8, 8);
+                                    g.FillEllipse(brush, pf.X-5, pf.Y-5, 11, 11);
                                 }
                                 line = sr.ReadLine();
                             }
@@ -211,42 +213,73 @@ namespace LostCityApp
 
             }
         }
+        public void ScaleBar(double maxScore, double minScore, string outputImage)
+        {
+            
+            double rangeScore = maxScore - minScore;
+            double inc = rangeScore / 10;
 
+            using (Bitmap newImage = new Bitmap(500, 2000))
+            {
+                
+                using (Graphics g = Graphics.FromImage(newImage))
+                {
+                    g.Clear(Color.White);
+                    for (int i = 0; i < 10; i++)
+                    {
+                        double s = (i * inc)+ minScore;
+                        //get colour index
+                        int index = (int)(((s - minScore) / rangeScore) * 255.0);
+                        if (index > 255)
+                            index = 255;
+                        if (index < 0)
+                            index = 0;
+                        Brush brush = new SolidBrush(ScoreGradient[index]);
+                        g.FillRectangle(brush, 100, (10 - i) *100 , 100, 100);
+                        AddText(Math.Round(s, 0).ToString(), g, 250, (10 - i) * 100 + 25);
+                    }
+                }
+                newImage.Save(folder + "\\" + outputImage);
+            }
+            
+        }
+
+        private void AddText(string text, Graphics g, float x, float y)
+        {
+            // Create font and brush.
+            Font drawFont = new Font("Arial", 32);
+            SolidBrush drawBrush = new SolidBrush(Color.Black);
+
+            // Set format of string.
+            StringFormat drawFormat = new StringFormat();
+            //drawFormat.FormatFlags = StringFormatFlags.;
+            // Draw string to screen.
+            g.DrawString(text, drawFont, drawBrush, x, y, drawFormat);
+        }
         public void MarkScores(string inputImage, string outputImage, string scoreFile, double min = 0, double max = 0)
         {
             int[] minMax = MinMax(scoreFile);
-            if (max ==0)
+            if (max == 0)
             {
                 
-                min = Math.Log(1);
-                max = Math.Log(minMax[1]);
+                min = minMax[0]+1;
+                max = minMax[1];
             }
-            min = Math.Log(20);
+            
             SetScoreGradient();
+
+            string scaleImgFile = Path.GetFileNameWithoutExtension(outputImage) + "_scale.png";
+            ScaleBar(max, min, scaleImgFile);
+
             using (System.Drawing.Image imageFile = System.Drawing.Image.FromFile(folder + "\\" + inputImage))
             {
-                using (Bitmap newImage = new Bitmap(pixelsX, pixelsY))
+                using (Bitmap newImage = new Bitmap(pixelsX + 500, pixelsY))
                 {
                     using (Graphics g = Graphics.FromImage(newImage))
                     {
                         g.DrawImage(imageFile, new PointF(0, 0));
-                        double inc = minMax[1] / 10;
-                        for(int i = 0; i < 10; i++)
-                        {
-                            double s = Math.Log(1);
-                            if (i>0) 
-                                s = Math.Log(i * inc);
-                            
-                            //get colour index
-                            int index = (int)(((s - min) / (max - min)) * 255.0);
-                            if (index > 255)
-                                index = 255;
-                            if (index < 0)
-                                index = 0;
-                            Brush brush = new SolidBrush(ScoreGradient[index]);
-                            g.FillRectangle(brush, i*20, 0, 20, 20);
-                        }
-                        using(StreamReader sr = new StreamReader(scoreFile))
+                        g.DrawImage(System.Drawing.Image.FromFile(folder + "\\"+ scaleImgFile), new PointF(2000, 0));
+                        using (StreamReader sr = new StreamReader(scoreFile))
                         {
                             string line = sr.ReadLine();
                             int row = 0;
@@ -258,7 +291,7 @@ namespace LostCityApp
                                 {
                                     if (int.Parse(p) > 0)
                                     {
-                                        double s = Math.Log(int.Parse(p));
+                                        double s = int.Parse(p);
 
                                         //get colour index
                                         int index = (int)(((s - min) / (max - min))*255.0);
@@ -338,38 +371,46 @@ namespace LostCityApp
 
             }
         }
-        public void AddPolylineName(string inputImage, string outputImage, List<Polyline> polylines)
+        public void SiteNumberLayer(string outputImage, List<Polyline> polylines)
         {
-            Font drawFont = new Font("Arial", 16);
+            Font drawFont = new Font("Arial", 32, FontStyle.Bold);
             SolidBrush drawBrush = new SolidBrush(Color.Black);
-            using (System.Drawing.Image imageFile = System.Drawing.Image.FromFile(folder + "\\" + inputImage))
+            SolidBrush whiteBrush = new SolidBrush(Color.White);
+            using (Bitmap newImage = new Bitmap(pixelsX, pixelsY))
             {
-                using (Bitmap newImage = new Bitmap(pixelsX, pixelsY))
+                using (Graphics g = Graphics.FromImage(newImage))
                 {
-                    using (Graphics g = Graphics.FromImage(newImage))
+                    g.Clear(Color.Transparent);
+                    int count = 1;
+                    foreach (Polyline polyline in polylines)
                     {
-                        g.DrawImage(imageFile, new PointF(0, 0));
-                        int count = 1;
-                        foreach (Polyline polyline in polylines)
+                        List<PointF> points = new List<System.Drawing.PointF>();
+                        float sumX = 0;
+                        float sumY = 0;
+                        foreach (double[] p in polyline.vertices.ToList())
                         {
-                            List<System.Drawing.PointF> points = new List<System.Drawing.PointF>();
-                            float sumX = 0;
-                            float sumY = 0;
-                            foreach (double[] p in polyline.vertices.ToList())
-                            {
-                                PointF pf = PointToPoint(p);
-                                sumX += pf.X;
-                                sumY += pf.Y;
-                            }
-                            PointF textPos = new PointF(sumX / polyline.vertices.Count(), sumY / polyline.vertices.Count());
-
-                            g.DrawString(count.ToString(), drawFont, drawBrush, textPos);
-                            count++;
+                            PointF pf = PointToPoint(p);
+                            sumX += pf.X;
+                            sumY += pf.Y;
                         }
-                        newImage.Save(folder + "\\" + outputImage);
+                        PointF textPos = new PointF(sumX / polyline.vertices.Count(), sumY / polyline.vertices.Count());
+                        g.FillRectangle(whiteBrush, textPos.X, textPos.Y, 50, 50);
+                        g.DrawString(count.ToString(), drawFont, drawBrush, textPos);
+                        //GraphicsPath path = new GraphicsPath();
+                        //path.AddString(
+                        //    count.ToString(),             // text to draw
+                        //    new FontFamily("Arial"),  // or any other font family
+                        //    (int)FontStyle.Bold,      // font style (bold, italic, etc.)
+                        //    g.DpiY * 32 / 72,       // em size
+                        //    textPos,              // location where to draw text
+                        //    new StringFormat());          // set options here (e.g. center alignment)
+                        //g.DrawPath(Pens.White, path);
+                        //g.FillPath(drawBrush, path);
+                        Console.WriteLine(count.ToString() + ": " + polyline.name);
+                        count++;
                     }
+                    newImage.Save(folder + "\\" + outputImage);
                 }
-
             }
         }
         public void AddPolyine(string inputImage, string outputImage, List<Polyline> polylines, Color penColor, float penWeight = 0)

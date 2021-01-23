@@ -26,9 +26,9 @@ body {
 <script src="simple_statistics.js"></script>
 <script>
 //https://bl.ocks.org/sebg/6f7f1dd55e0c52ce5ee0dac2b2769f4b
-var margin = {top: 220, right: 20, bottom: 100, left: 100},
+var margin = {top: 300, right: 20, bottom: 100, left: 100},
     width = 1000 - margin.left - margin.right,
-    height = 720 - margin.top - margin.bottom;
+    height = 800 - margin.top - margin.bottom;
 
 var x = d3.scaleLog()
     .range([0, width]);
@@ -51,7 +51,7 @@ var svg = d3.select("body").append("svg")
 d3.csv("siteScores.csv", function(error, data) {
   if (error) throw error;
 
-x.domain([700,7.6e4]);
+x.domain([2000,20e4]);
 y.domain(d3.extent(data, function(d) { return parseFloat(d.intervisibility); })).nice();
 
 var max = d3.max(data,function(g) { return x(parseFloat(g.terrain));})

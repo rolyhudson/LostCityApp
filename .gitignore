@@ -57,4 +57,4 @@ bld/
 *.suo
 *.user
 .vs/
-/BHoM/Acoustic/Database
+Data/results

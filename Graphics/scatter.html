@@ -29,8 +29,10 @@ body {
 <script>
 
 
-var files = ["terrainVisScores.csv",
-"interVisScores.csv"]
+var files = ["terrainVisTest_scores.csv",
+"terrainVis_viewed_scores.csv",
+"interVisTest_scores.csv"
+]
 
 
 
@@ -50,20 +52,14 @@ function process(file){
     data.splice(0,0,actual);
     var title=[]
 
-    if (file.includes("terrain")) title.push("Terrain visibility scores");
-    if (file.includes("inter")) title.push("Inter-visibility scores, random sites located where:");
+    if (file.includes("terrainVisTest")) title.push("Terrain visibility viewer scores, random settlements located where:");
+    if (file.includes("viewed")) title.push("Terrain visibility viewed scores, random settlements located where:");
+    if (file.includes("inter")) title.push("Inter-visibility scores, random settlements located where:");
 
     title.push("- elevation range is 380 to 1750 metres");
-    switch (file){
-      case"terrainVisScores.csv":
-        title.push("- minimum distance to water source 125 metres");
-        title.push("- terrain slope is between 16 and 36 degrees");
-        break;
-      case"interVisScores.csv":
-        title.push("- minimum distance to water source 125 metres");
-        title.push("- terrain slope is between 16 and 36 degrees");
-        break;
-    }
+    title.push("- minimum distance to water source 125 metres");
+    title.push("- terrain slope is between 16 and 36 degrees");
+
     const scatter = new ScatterPlot(data,title,file);
     scatter.createGraph();
   }

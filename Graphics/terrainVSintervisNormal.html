@@ -69,7 +69,7 @@ for (d in data){
   data[d].intervisibility = +data[d].intervisibility/+data[d].pts;
   data
 }
-x.domain([120,3.6e3]);
+x.domain([500,5e3]);
 y.domain(d3.extent(data, function(d) { return d.intervisibility; })).nice();
 
 var max = d3.max(data,function(g) { return x(g.terrain);})

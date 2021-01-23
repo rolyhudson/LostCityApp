@@ -12,9 +12,11 @@ namespace LostCityApp
         {
             
             LostCityObjects lostCityObjects = new LostCityObjects();
+            //PostProcessResults postProcessResults = new PostProcessResults();
+            //lostCityObjects.Analyse();
+            lostCityObjects.ImageGenerator(1);
+            //
             
-            lostCityObjects.Analyse();
-            //lostCityObjects.ImageGenerator(1);
         }
     }
 }
